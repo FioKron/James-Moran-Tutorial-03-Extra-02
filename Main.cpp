@@ -14,6 +14,9 @@
 /** To assist in varying the screen-clear colour in Extra Exercise 01a */
 #include <random>
 
+/** This is where all constant values are stored, in order to tidy up this file */
+#include "ConstantValues.h"
+
 //////////////////////////////////////////////////////////////////////////////////////
 //	Global Variables (seems as though g_ would equate to a global variable then
 //////////////////////////////////////////////////////////////////////////////////////
@@ -33,6 +36,8 @@ ID3D11VertexShader* g_pVertexShader;
 ID3D11PixelShader* g_pPixelShader;
 ID3D11InputLayout* g_pInputLayout;
 
+/** For Extra Exercise 01 of Tutorial 03 */
+
 // 'Define vertex structure'
 struct POS_COL_VERTEX
 {
@@ -40,14 +45,18 @@ struct POS_COL_VERTEX
 	XMFLOAT4 Col;
 };
 
+// 'Define vertices of a triangle - screen coordinates -1.0f to +1.0'
+POS_COL_VERTEX g_vertices[G_VERTICES_COUNT] =
+{
+	{ XMFLOAT3(0.9f, 0.9f, 0.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) },
+	{ XMFLOAT3(0.9f, -0.9f, 0.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
+	{ XMFLOAT3(-0.9f, -0.9f, 0.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) }
+};
+
+
+
 /** For exercise 01 of Tutorial 02 */
 ID3D11RenderTargetView* g_pBackBufferRTView = NULL;
-
-/** For the Additional Exercises of Tutorial 02 */
-
-// Constant values:
-
-const int G_CLEAR_COLOUR_ARRAY_SIZE = 4;
 
 /** For clearing the back buffer (leave the alpha value at 1.0f) */
 //float  g_clear_colour[G_CLEAR_COLOUR_ARRAY_SIZE] = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -55,14 +64,10 @@ const int G_CLEAR_COLOUR_ARRAY_SIZE = 4;
 /** For the Advanced Exercise of Tutorial 02 */
 DXGI_SWAP_CHAIN_DESC DefaultSwapChainDescription;
 
-/** For Exercise 01 of Tutorial 3 */
-const float G_DEFAULT_CLEAR_COLOUR[G_CLEAR_COLOUR_ARRAY_SIZE] = { 1.0f, 1.0f, 1.0f, 1.0f };
+/** For Extra Exercise 01 of Tutorial 03 */
 
-// Rename for each tutorial
-//char		g_TutorialName[100] = "James Moran Tutorial 02 Exercise 01\0";
-
-// (Attempting to use std::string instead):
-std::string TutorialName = "James Moran Tutorial 03 Exercise 01\0";
+/** Lock and unlock the buffer (using Map() and UnMap()) before updating the vertices */
+void UpdateVertices();
 
 //////////////////////////////////////////////////////////////////////////////////////
 //	Forward declarations
@@ -77,8 +82,15 @@ void ShutdownD3D();
 /** For Exercise 01 of Tutorial 02 */
 void RenderFrame(void); // (enquire about the use of void here, to identify no parameters)
 
-/** For exercise 01 of Tutorial 03 */
+						/** For exercise 01 of Tutorial 03 */
 HRESULT InitialiseGraphics(void); // void is void ^^
+
+								  /** For Extra Exercise 01 of Tutorial 03 */
+void ManageKeyPressed(int VirtualKeyCode);
+
+// For the range of position/colour values
+void MaintainPositionValueRange();
+void MaintainColourValueRange();
 
 //////////////////////////////////////////////////////////////////////////////////////
 // Entry point to the program. Initializes everything and goes into a message processing 
@@ -128,15 +140,27 @@ int WINAPI WinMain(HINSTANCE InstanceHandle, HINSTANCE hPrevInstance, LPSTR lpCm
 	return (int)msg.wParam;
 }
 
+// If the position or the colour of a certain vertex is altered:
+void UpdateVertices()
+{
+	// 'Copy the vertices into the buffer'
+	D3D11_MAPPED_SUBRESOURCE ms;
+
+	// 'Lock the buffer to allow writing'
+	g_pImmediateContext->Map(g_pVertexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
+
+	// 'Copy the data'
+	memcpy(ms.pData, g_vertices, sizeof(g_vertices));
+
+	// 'Unlock the buffer'
+	g_pImmediateContext->Unmap(g_pVertexBuffer, NULL);
+}
 
 //////////////////////////////////////////////////////////////////////////////////////
 // Register class and create window
 //////////////////////////////////////////////////////////////////////////////////////
 HRESULT InitialiseWindow(HINSTANCE InstanceHandle, int nCmdShow)
 {
-	// Give your app window your own name
-	char Name[100] = "James Moran\0";
-
 	// Register class
 	WNDCLASSEX wcex = { 0 };
 	wcex.cbSize = sizeof(WNDCLASSEX);
@@ -145,7 +169,8 @@ HRESULT InitialiseWindow(HINSTANCE InstanceHandle, int nCmdShow)
 	wcex.hInstance = InstanceHandle;
 	wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
 	//   wcex.hbrBackground = (HBRUSH )( COLOR_WINDOW + 1); // Needed for non-D3D apps
-	wcex.lpszClassName = Name;
+	// const char* used once again:
+	wcex.lpszClassName = NAME.c_str();
 
 	if (!RegisterClassEx(&wcex)) return E_FAIL;
 
@@ -154,8 +179,8 @@ HRESULT InitialiseWindow(HINSTANCE InstanceHandle, int nCmdShow)
 	RECT rc = { 0, 0, 640, 480 };
 	AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
 
-	// As const char* can be parsed in as an LPCCHAR: 
-	g_hWnd = CreateWindow(Name, TutorialName.c_str(), WS_OVERLAPPEDWINDOW,
+	// A const char* can be parsed in as an LPCCHAR: 
+	g_hWnd = CreateWindow(NAME.c_str(), TUTORIAL_NAME.c_str(), WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left,
 		rc.bottom - rc.top, NULL, NULL, InstanceHandle, NULL);
 	if (!g_hWnd)
@@ -181,9 +206,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	// For Advanced Exercise 01:
 
-	/** 
-		This result has been set to S_OK in execution so far 
-		(when calling ResizeBuffers).
+	/**
+	This result has been set to S_OK in execution so far
+	(when calling ResizeBuffers).
 	*/
 	HRESULT ResizeResult = 0;
 
@@ -199,38 +224,37 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_KEYDOWN:
-		if (wParam == VK_ESCAPE)
-			DestroyWindow(g_hWnd);
-		return 0;
+		ManageKeyPressed(wParam);
+		break;
 
-	/**
+		/**
 		// For altering the red...
-	case WM_MOUSEMOVE:
+		case WM_MOUSEMOVE:
 		MouseXPosition = LOWORD(lParam);
 		MouseYPosition = HIWORD(lParam);
 
 		g_clear_colour[0] = (MouseXPosition / MouseYPosition) / 100.0f;
 		break;
 		// green...
-	case WM_LBUTTONDOWN:
+		case WM_LBUTTONDOWN:
 		g_clear_colour[1] += 0.010f;
 		break;
 
-	case WM_RBUTTONDOWN:
+		case WM_RBUTTONDOWN:
 		g_clear_colour[1] -= 0.010f;
 		break;
 
 		// as well as blue components of g_clear_colour.
-	case WM_MOUSEWHEEL:
-		
+		case WM_MOUSEWHEEL:
+
 		MouseWheelRotationDelta = GET_WHEEL_DELTA_WPARAM(wParam);
-		
-		// Modify the blue component accordingly: 
-		g_clear_colour[2] += MouseWheelRotationDelta / 1000.0f;		
+
+		// Modify the blue component accordingly:
+		g_clear_colour[2] += MouseWheelRotationDelta / 1000.0f;
 		break;
-	*/
-	// For Tutorial 02 Advanced 01:
-	// CHECK TO SEE IF THIS IS THE OPTIMAL WAY TO GO ABOUT RESIZING THE BUFFERS!!OGea
+		*/
+		// For Tutorial 02 Advanced 01:
+		// CHECK TO SEE IF THIS IS THE OPTIMAL WAY TO GO ABOUT RESIZING THE BUFFERS!!OGea
 	case WM_SIZE:
 		if (g_pSwapChain)
 		{
@@ -243,21 +267,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			UINT NewWidth = ClientBounds.right - ClientBounds.left;
 			UINT NewHeight = ClientBounds.bottom - ClientBounds.top;
 
-			/** 
-				Then it is possible to resize the buffers correctly
-				(Using DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH for the
-				last parameter to allowing switching between full-screen
-				and windowed mode. I'm also using DXGI_FORMAT_UNKNOWN, to
-				preserve the existing format. Finally, I have set the first 3
-				parameters as 0, to preserve the exitsting number of buffers,
-				as well as having DXGI use the width and height of the client
-				area of the target window, for then new width and height.)
+			/**
+			Then it is possible to resize the buffers correctly
+			(Using DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH for the
+			last parameter to allowing switching between full-screen
+			and windowed mode. I'm also using DXGI_FORMAT_UNKNOWN, to
+			preserve the existing format. Finally, I have set the first 3
+			parameters as 0, to preserve the exitsting number of buffers,
+			as well as having DXGI use the width and height of the client
+			area of the target window, for then new width and height.)
 
-				SOURCE: https://msdn.microsoft.com/en-us/library/bb174577(v=vs.85).aspx 
+			SOURCE: https://msdn.microsoft.com/en-us/library/bb174577(v=vs.85).aspx
 			*/
 			HRESULT ResizeResult = g_pSwapChain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN,
 				DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
-		}		
+		}
 		break;
 
 	default:
@@ -267,22 +291,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			// Add or replace the above check with that of checking this value: hWnd->unused;
 			return DefWindowProc(hWnd, message, wParam, lParam);
-		}		
+		}
 	}
 
 	/**
 	// Keep the colour components of g_clear_colour
-	// within the bounds (0.0f to 1.0f):	
+	// within the bounds (0.0f to 1.0f):
 	for (int ClearColourIterator = 0; ClearColourIterator < G_CLEAR_COLOUR_ARRAY_SIZE - 1; ClearColourIterator++)
 	{
-		if (g_clear_colour[ClearColourIterator] >= 1.0f)
-		{
-			g_clear_colour[ClearColourIterator] = 1.0f;
-		}
-		else if (g_clear_colour[ClearColourIterator] <= 0.0f)
-		{
-			g_clear_colour[ClearColourIterator] = 0.0f;
-		}
+	if (g_clear_colour[ClearColourIterator] >= 1.0f)
+	{
+	g_clear_colour[ClearColourIterator] = 1.0f;
+	}
+	else if (g_clear_colour[ClearColourIterator] <= 0.0f)
+	{
+	g_clear_colour[ClearColourIterator] = 0.0f;
+	}
 	}
 	*/
 	return 0;
@@ -405,16 +429,6 @@ HRESULT InitialiseGraphics()//03-01
 {
 	HRESULT hr = S_OK;
 
-	// 'Define vertices of a triangle - screen coordinates -1.0f to +1.0'
-	// (Now the vertices for a square)
-	POS_COL_VERTEX vertices[] =
-	{
-		{XMFLOAT3(-0.9f, 0.9f, 0.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f)},
-		{XMFLOAT3(0.9f, 0.9f, 0.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f)},
-		{XMFLOAT3(0.9f, -0.9f, 0.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f)},
-		{XMFLOAT3(-0.9f, -0.9f, 0.0f), XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f)}
-	};
-
 	// 'Set up and create vertex buffer'
 	D3D11_BUFFER_DESC bufferDesc;
 	ZeroMemory(&bufferDesc, sizeof(bufferDesc));
@@ -429,22 +443,12 @@ HRESULT InitialiseGraphics()//03-01
 		return hr;
 	}
 
-	// 'Copy the vertices into the buffer'
-	D3D11_MAPPED_SUBRESOURCE ms;
-
-	// 'Lock the buffer to allow writing'
-	g_pImmediateContext->Map(g_pVertexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
-
-	// 'Copy the data'
-	memcpy(ms.pData, vertices, sizeof(vertices));
-
-	// 'Unlock the buffer'
-	g_pImmediateContext->Unmap(g_pVertexBuffer, NULL);
+	UpdateVertices();
 
 	// 'Load and compile pixel and vertex shaders - use vs_5_0 to target DX11 hardware only'
 	ID3DBlob *VS, *PS, *error;
 	hr = D3DX11CompileFromFile("shaders.hlsl", 0, 0, "VShader", "vs_4_0", 0, 0, 0, &VS, &error, 0);
-	
+
 	if (error != 0) // 'check for shader compilation error'
 	{
 		OutputDebugStringA((char*)error->GetBufferPointer());
@@ -456,7 +460,7 @@ HRESULT InitialiseGraphics()//03-01
 	}
 
 	hr = D3DX11CompileFromFile("shaders.hlsl", 0, 0, "PShader", "ps_4_0", 0, 0, 0, &PS, &error, 0);
-	
+
 	if (error != 0) // 'check for shader compilation error'
 	{
 		OutputDebugStringA((char*)error->GetBufferPointer());
@@ -469,14 +473,14 @@ HRESULT InitialiseGraphics()//03-01
 
 	// 'Create shader objects'
 	hr = g_pD3DDevice->CreateVertexShader(VS->GetBufferPointer(), VS->GetBufferSize(), NULL, &g_pVertexShader);
-	
+
 	if (FAILED(hr))
 	{
 		return hr;
 	}
 
 	hr = g_pD3DDevice->CreatePixelShader(PS->GetBufferPointer(), PS->GetBufferSize(), NULL, &g_pPixelShader);
-	
+
 	if (FAILED(hr))
 	{
 		return hr;
@@ -489,8 +493,8 @@ HRESULT InitialiseGraphics()//03-01
 	// 'Create and set the input layout object'
 	D3D11_INPUT_ELEMENT_DESC iedesc[] =
 	{
-		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
 	hr = g_pD3DDevice->CreateInputLayout(iedesc, 2, VS->GetBufferPointer(), VS->GetBufferSize(), &g_pInputLayout);
@@ -505,6 +509,178 @@ HRESULT InitialiseGraphics()//03-01
 	return S_OK;
 }
 
+/**
+Handle the action(s) taken when certain keys are pressed
+(This function would not account shift or ctrl pressed
+whilst another key is being pressed):
+*/
+void ManageKeyPressed(int VirtualKeyCode)
+{
+	switch (VirtualKeyCode)
+	{
+
+	case VK_ESCAPE:
+		DestroyWindow(g_hWnd);
+		break;
+
+	case VK_1:
+		g_vertices[0].Pos.x += POSITION_MODIFICATION_SCALAR;
+		break;
+
+	case VK_2:
+		g_vertices[0].Pos.x -= POSITION_MODIFICATION_SCALAR;
+		break;
+
+	case VK_3:
+		g_vertices[0].Pos.y += POSITION_MODIFICATION_SCALAR;
+		break;
+
+	case VK_4:
+		g_vertices[0].Pos.y -= POSITION_MODIFICATION_SCALAR;
+		break;
+
+	case VK_5:
+		g_vertices[1].Pos.x += POSITION_MODIFICATION_SCALAR;
+		break;
+
+	case VK_6:
+		g_vertices[1].Pos.x -= POSITION_MODIFICATION_SCALAR;
+		break;
+
+	case VK_7:
+		g_vertices[1].Pos.y += POSITION_MODIFICATION_SCALAR;
+		break;
+
+	case VK_8:
+		g_vertices[1].Pos.y -= POSITION_MODIFICATION_SCALAR;
+		break;
+
+	case VK_9:
+		g_vertices[2].Pos.x += POSITION_MODIFICATION_SCALAR;
+		break;
+
+	case VK_0:
+		g_vertices[2].Pos.x -= POSITION_MODIFICATION_SCALAR;
+		break;
+
+		// This is for the add key on the num. pad, resolve this:
+	case VK_ADD:
+		g_vertices[2].Pos.y += POSITION_MODIFICATION_SCALAR;
+		break;
+
+		// This is for the subtract key on the num. pad, resolve this:
+	case VK_SUBTRACT:
+		g_vertices[2].Pos.y -= POSITION_MODIFICATION_SCALAR;
+		break;
+
+	case VK_QKEY:
+		g_vertices[0].Col.x += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[0].Col.y += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[0].Col.z += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[0].Col.w += COLOUR_MODIFICATION_SCALAR;
+		break;
+
+	case VK_WKEY:
+		g_vertices[0].Col.x -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[0].Col.y -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[0].Col.z -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[0].Col.w -= COLOUR_MODIFICATION_SCALAR;
+		break;
+
+	case VK_EKEY:
+		g_vertices[1].Col.x += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[1].Col.y += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[1].Col.z += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[1].Col.w += COLOUR_MODIFICATION_SCALAR;
+		break;
+
+	case VK_RKEY:
+		g_vertices[1].Col.x -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[1].Col.y -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[1].Col.z -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[1].Col.w -= COLOUR_MODIFICATION_SCALAR;
+		break;
+
+	case VK_TKEY:
+		g_vertices[2].Col.x += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[2].Col.y += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[2].Col.z += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[2].Col.w += COLOUR_MODIFICATION_SCALAR;
+		break;
+
+	case VK_YKEY:
+		g_vertices[2].Col.x -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[2].Col.y -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[2].Col.z -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[2].Col.w -= COLOUR_MODIFICATION_SCALAR;
+		break;
+	}
+
+	// Keep the values in range:
+	MaintainPositionValueRange();
+	MaintainColourValueRange();
+
+	// Then update the vertices:
+	UpdateVertices();
+}
+
+void MaintainPositionValueRange()
+{
+	for (int Iterator = 0; Iterator < G_VERTICES_COUNT; Iterator++)
+	{
+		if (g_vertices[Iterator].Pos.x >= POSITION_UPPER_BOUND)
+		{
+			g_vertices[Iterator].Pos.x = POSITION_UPPER_BOUND;
+		}
+		else if (g_vertices[Iterator].Pos.x <= POSITION_LOWER_BOUND)
+		{
+			g_vertices[Iterator].Pos.x = POSITION_LOWER_BOUND;
+		}
+
+		if (g_vertices[Iterator].Pos.y >= POSITION_UPPER_BOUND)
+		{
+			g_vertices[Iterator].Pos.y = POSITION_UPPER_BOUND;
+		}
+		else if (g_vertices[Iterator].Pos.y <= POSITION_LOWER_BOUND)
+		{
+			g_vertices[Iterator].Pos.y = POSITION_LOWER_BOUND;
+		}
+	}
+}
+
+void MaintainColourValueRange()
+{
+	for (int Iterator = 0; Iterator < G_VERTICES_COUNT; Iterator++)
+	{
+		if (g_vertices[Iterator].Col.x >= COLOUR_UPPER_BOUND)
+		{
+			g_vertices[Iterator].Col.x = COLOUR_UPPER_BOUND;
+		}
+		else if (g_vertices[Iterator].Col.x <= COLOUR_LOWER_BOUND)
+		{
+			g_vertices[Iterator].Col.x = COLOUR_LOWER_BOUND;
+		}
+
+		if (g_vertices[Iterator].Col.y >= COLOUR_UPPER_BOUND)
+		{
+			g_vertices[Iterator].Col.y = COLOUR_UPPER_BOUND;
+		}
+		else if (g_vertices[Iterator].Col.y <= COLOUR_LOWER_BOUND)
+		{
+			g_vertices[Iterator].Col.y = COLOUR_LOWER_BOUND;
+		}
+
+		if (g_vertices[Iterator].Col.z >= COLOUR_UPPER_BOUND)
+		{
+			g_vertices[Iterator].Col.z = COLOUR_UPPER_BOUND;
+		}
+		else if (g_vertices[Iterator].Col.z <= COLOUR_LOWER_BOUND)
+		{
+			g_vertices[Iterator].Col.z = COLOUR_LOWER_BOUND;
+		}
+	}
+}
+
 // Render frame
 void RenderFrame(void)
 {
@@ -516,7 +692,7 @@ void RenderFrame(void)
 
 	//for (int ColourComponentIterator = 0; ColourComponentIterator < G_CLEAR_COLOUR_ARRAY_SIZE - 1; ColourComponentIterator++)
 	//{
-		//g_clear_colour[ColourComponentIterator] = RandomDistribution(DefaultRandomGenerator);
+	//g_clear_colour[ColourComponentIterator] = RandomDistribution(DefaultRandomGenerator);
 	//}
 
 	g_pImmediateContext->ClearRenderTargetView(g_pBackBufferRTView, G_DEFAULT_CLEAR_COLOUR);
