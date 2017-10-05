@@ -41,16 +41,24 @@ ID3D11InputLayout* g_pInputLayout;
 // 'Define vertex structure'
 struct POS_COL_VERTEX
 {
-	XMFLOAT3 Pos;
-	XMFLOAT4 Col;
+	XMFLOAT3 Position;
+	XMFLOAT4 Colour;
 };
 
 // 'Define vertices of a triangle - screen coordinates -1.0f to +1.0'
 POS_COL_VERTEX g_vertices[G_VERTICES_COUNT] =
 {
-	{ XMFLOAT3(0.9f, 0.9f, 0.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) },
-	{ XMFLOAT3(0.9f, -0.9f, 0.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
-	{ XMFLOAT3(-0.9f, -0.9f, 0.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) }
+	// (With default clockwise drawing order):
+	
+	{ XMFLOAT3(-0.450f, 0.450f, 0.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
+	{ XMFLOAT3(-0.450f, 0.60f, 0.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) },
+	{ XMFLOAT3(-0.30f, 0.750f, 0.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) },
+	
+	{ XMFLOAT3(-0.150f, 0.750f, 0.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) },
+	{ XMFLOAT3(0.0f, 0.60f, 0.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) },
+	{ XMFLOAT3(0.0f, 0.30f, 0.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
+	{ XMFLOAT3(-0.150f, 0.150f, 0.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
+	{ XMFLOAT3(-0.30f, 0.150f, 0.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) }
 };
 
 
@@ -433,11 +441,12 @@ HRESULT InitialiseGraphics()//03-01
 	D3D11_BUFFER_DESC bufferDesc;
 	ZeroMemory(&bufferDesc, sizeof(bufferDesc));
 	bufferDesc.Usage = D3D11_USAGE_DYNAMIC; // 'Used by CPU and GPU'
-	bufferDesc.ByteWidth = sizeof(POS_COL_VERTEX) * 3; // 'Total size of buffer, 3 vertices'
+	bufferDesc.ByteWidth = sizeof(POS_COL_VERTEX) * G_VERTICES_COUNT; // Total size of buffer, G_VERTICES_COUNT vertices (not just 3 any more)
 	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER; // 'Use as a vertex buffer'
 	bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE; // 'Allow CPU access'
+	
 	hr = g_pD3DDevice->CreateBuffer(&bufferDesc, NULL, &g_pVertexBuffer); // 'Create the buffer'
-
+	
 	if (FAILED(hr)) // return error code on failure
 	{
 		return hr;
@@ -524,95 +533,95 @@ void ManageKeyPressed(int VirtualKeyCode)
 		break;
 
 	case VK_1:
-		g_vertices[0].Pos.x += POSITION_MODIFICATION_SCALAR;
+		g_vertices[0].Position.x += POSITION_MODIFICATION_SCALAR;
 		break;
 
 	case VK_2:
-		g_vertices[0].Pos.x -= POSITION_MODIFICATION_SCALAR;
+		g_vertices[0].Position.x -= POSITION_MODIFICATION_SCALAR;
 		break;
 
 	case VK_3:
-		g_vertices[0].Pos.y += POSITION_MODIFICATION_SCALAR;
+		g_vertices[0].Position.y += POSITION_MODIFICATION_SCALAR;
 		break;
 
 	case VK_4:
-		g_vertices[0].Pos.y -= POSITION_MODIFICATION_SCALAR;
+		g_vertices[0].Position.y -= POSITION_MODIFICATION_SCALAR;
 		break;
 
 	case VK_5:
-		g_vertices[1].Pos.x += POSITION_MODIFICATION_SCALAR;
+		g_vertices[1].Position.x += POSITION_MODIFICATION_SCALAR;
 		break;
 
 	case VK_6:
-		g_vertices[1].Pos.x -= POSITION_MODIFICATION_SCALAR;
+		g_vertices[1].Position.x -= POSITION_MODIFICATION_SCALAR;
 		break;
 
 	case VK_7:
-		g_vertices[1].Pos.y += POSITION_MODIFICATION_SCALAR;
+		g_vertices[1].Position.y += POSITION_MODIFICATION_SCALAR;
 		break;
 
 	case VK_8:
-		g_vertices[1].Pos.y -= POSITION_MODIFICATION_SCALAR;
+		g_vertices[1].Position.y -= POSITION_MODIFICATION_SCALAR;
 		break;
 
 	case VK_9:
-		g_vertices[2].Pos.x += POSITION_MODIFICATION_SCALAR;
+		g_vertices[2].Position.x += POSITION_MODIFICATION_SCALAR;
 		break;
 
 	case VK_0:
-		g_vertices[2].Pos.x -= POSITION_MODIFICATION_SCALAR;
+		g_vertices[2].Position.x -= POSITION_MODIFICATION_SCALAR;
 		break;
 
 		// This is for the add key on the num. pad, resolve this:
 	case VK_ADD:
-		g_vertices[2].Pos.y += POSITION_MODIFICATION_SCALAR;
+		g_vertices[2].Position.y += POSITION_MODIFICATION_SCALAR;
 		break;
 
 		// This is for the subtract key on the num. pad, resolve this:
 	case VK_SUBTRACT:
-		g_vertices[2].Pos.y -= POSITION_MODIFICATION_SCALAR;
+		g_vertices[2].Position.y -= POSITION_MODIFICATION_SCALAR;
 		break;
 
 	case VK_QKEY:
-		g_vertices[0].Col.x += COLOUR_MODIFICATION_SCALAR;
-		g_vertices[0].Col.y += COLOUR_MODIFICATION_SCALAR;
-		g_vertices[0].Col.z += COLOUR_MODIFICATION_SCALAR;
-		g_vertices[0].Col.w += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[0].Colour.x += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[0].Colour.y += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[0].Colour.z += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[0].Colour.w += COLOUR_MODIFICATION_SCALAR;
 		break;
 
 	case VK_WKEY:
-		g_vertices[0].Col.x -= COLOUR_MODIFICATION_SCALAR;
-		g_vertices[0].Col.y -= COLOUR_MODIFICATION_SCALAR;
-		g_vertices[0].Col.z -= COLOUR_MODIFICATION_SCALAR;
-		g_vertices[0].Col.w -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[0].Colour.x -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[0].Colour.y -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[0].Colour.z -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[0].Colour.w -= COLOUR_MODIFICATION_SCALAR;
 		break;
 
 	case VK_EKEY:
-		g_vertices[1].Col.x += COLOUR_MODIFICATION_SCALAR;
-		g_vertices[1].Col.y += COLOUR_MODIFICATION_SCALAR;
-		g_vertices[1].Col.z += COLOUR_MODIFICATION_SCALAR;
-		g_vertices[1].Col.w += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[1].Colour.x += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[1].Colour.y += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[1].Colour.z += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[1].Colour.w += COLOUR_MODIFICATION_SCALAR;
 		break;
 
 	case VK_RKEY:
-		g_vertices[1].Col.x -= COLOUR_MODIFICATION_SCALAR;
-		g_vertices[1].Col.y -= COLOUR_MODIFICATION_SCALAR;
-		g_vertices[1].Col.z -= COLOUR_MODIFICATION_SCALAR;
-		g_vertices[1].Col.w -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[1].Colour.x -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[1].Colour.y -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[1].Colour.z -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[1].Colour.w -= COLOUR_MODIFICATION_SCALAR;
 		break;
 
 	case VK_TKEY:
-		g_vertices[2].Col.x += COLOUR_MODIFICATION_SCALAR;
-		g_vertices[2].Col.y += COLOUR_MODIFICATION_SCALAR;
-		g_vertices[2].Col.z += COLOUR_MODIFICATION_SCALAR;
-		g_vertices[2].Col.w += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[2].Colour.x += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[2].Colour.y += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[2].Colour.z += COLOUR_MODIFICATION_SCALAR;
+		g_vertices[2].Colour.w += COLOUR_MODIFICATION_SCALAR;
 		break;
 
 	case VK_YKEY:
-		g_vertices[2].Col.x -= COLOUR_MODIFICATION_SCALAR;
-		g_vertices[2].Col.y -= COLOUR_MODIFICATION_SCALAR;
-		g_vertices[2].Col.z -= COLOUR_MODIFICATION_SCALAR;
-		g_vertices[2].Col.w -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[2].Colour.x -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[2].Colour.y -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[2].Colour.z -= COLOUR_MODIFICATION_SCALAR;
+		g_vertices[2].Colour.w -= COLOUR_MODIFICATION_SCALAR;
 		break;
 	}
 
@@ -628,22 +637,22 @@ void MaintainPositionValueRange()
 {
 	for (int Iterator = 0; Iterator < G_VERTICES_COUNT; Iterator++)
 	{
-		if (g_vertices[Iterator].Pos.x >= POSITION_UPPER_BOUND)
+		if (g_vertices[Iterator].Position.x >= POSITION_UPPER_BOUND)
 		{
-			g_vertices[Iterator].Pos.x = POSITION_UPPER_BOUND;
+			g_vertices[Iterator].Position.x = POSITION_UPPER_BOUND;
 		}
-		else if (g_vertices[Iterator].Pos.x <= POSITION_LOWER_BOUND)
+		else if (g_vertices[Iterator].Position.x <= POSITION_LOWER_BOUND)
 		{
-			g_vertices[Iterator].Pos.x = POSITION_LOWER_BOUND;
+			g_vertices[Iterator].Position.x = POSITION_LOWER_BOUND;
 		}
 
-		if (g_vertices[Iterator].Pos.y >= POSITION_UPPER_BOUND)
+		if (g_vertices[Iterator].Position.y >= POSITION_UPPER_BOUND)
 		{
-			g_vertices[Iterator].Pos.y = POSITION_UPPER_BOUND;
+			g_vertices[Iterator].Position.y = POSITION_UPPER_BOUND;
 		}
-		else if (g_vertices[Iterator].Pos.y <= POSITION_LOWER_BOUND)
+		else if (g_vertices[Iterator].Position.y <= POSITION_LOWER_BOUND)
 		{
-			g_vertices[Iterator].Pos.y = POSITION_LOWER_BOUND;
+			g_vertices[Iterator].Position.y = POSITION_LOWER_BOUND;
 		}
 	}
 }
@@ -652,31 +661,31 @@ void MaintainColourValueRange()
 {
 	for (int Iterator = 0; Iterator < G_VERTICES_COUNT; Iterator++)
 	{
-		if (g_vertices[Iterator].Col.x >= COLOUR_UPPER_BOUND)
+		if (g_vertices[Iterator].Colour.x >= COLOUR_UPPER_BOUND)
 		{
-			g_vertices[Iterator].Col.x = COLOUR_UPPER_BOUND;
+			g_vertices[Iterator].Colour.x = COLOUR_UPPER_BOUND;
 		}
-		else if (g_vertices[Iterator].Col.x <= COLOUR_LOWER_BOUND)
+		else if (g_vertices[Iterator].Colour.x <= COLOUR_LOWER_BOUND)
 		{
-			g_vertices[Iterator].Col.x = COLOUR_LOWER_BOUND;
-		}
-
-		if (g_vertices[Iterator].Col.y >= COLOUR_UPPER_BOUND)
-		{
-			g_vertices[Iterator].Col.y = COLOUR_UPPER_BOUND;
-		}
-		else if (g_vertices[Iterator].Col.y <= COLOUR_LOWER_BOUND)
-		{
-			g_vertices[Iterator].Col.y = COLOUR_LOWER_BOUND;
+			g_vertices[Iterator].Colour.x = COLOUR_LOWER_BOUND;
 		}
 
-		if (g_vertices[Iterator].Col.z >= COLOUR_UPPER_BOUND)
+		if (g_vertices[Iterator].Colour.y >= COLOUR_UPPER_BOUND)
 		{
-			g_vertices[Iterator].Col.z = COLOUR_UPPER_BOUND;
+			g_vertices[Iterator].Colour.y = COLOUR_UPPER_BOUND;
 		}
-		else if (g_vertices[Iterator].Col.z <= COLOUR_LOWER_BOUND)
+		else if (g_vertices[Iterator].Colour.y <= COLOUR_LOWER_BOUND)
 		{
-			g_vertices[Iterator].Col.z = COLOUR_LOWER_BOUND;
+			g_vertices[Iterator].Colour.y = COLOUR_LOWER_BOUND;
+		}
+
+		if (g_vertices[Iterator].Colour.z >= COLOUR_UPPER_BOUND)
+		{
+			g_vertices[Iterator].Colour.z = COLOUR_UPPER_BOUND;
+		}
+		else if (g_vertices[Iterator].Colour.z <= COLOUR_LOWER_BOUND)
+		{
+			g_vertices[Iterator].Colour.z = COLOUR_LOWER_BOUND;
 		}
 	}
 }
@@ -703,10 +712,10 @@ void RenderFrame(void)
 	g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
 
 	// 'Select which primitive type to use //03-01'
-	g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
 	// 'Draw the vertex buffer to the back buffer //03-01'
-	g_pImmediateContext->Draw(3, 0);
+	g_pImmediateContext->Draw(G_VERTICES_COUNT, 0);
 
 	// RENDER HERE
 
